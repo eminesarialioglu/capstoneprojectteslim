@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import json
 
 # Page settings
 st.set_page_config(layout="wide", page_title="Video/Audio Transcription and Translation")
@@ -75,26 +76,28 @@ if st.button("Transcribe and Translate", key="transcribe_button"):
 
             # Send request to FastAPI
             response = requests.post("http://localhost:8000/process_video", files=files, data=data)
+            st.write(response.text)  # Yanıtı yazdır
 
             # Update progress bar
             progress_bar.progress((idx + 1) / len(audio_files))
 
             if response.status_code == 200:
-                st.success(f"{audio_file.name} translated successfully!")
-                # Add translation to the list
-                current_translations.append(response.json())
-            else:
-                st.error(f"Error occurred: {response.json()['detail']}")
+                translations = response.json()  # JSON formatında yanıtı al
+                # Yanıtın yapısını kontrol et
+                st.write(translations)  # Yanıtı yazdır
+                if isinstance(translations, dict):  # Eğer yanıt bir sözlükse
+                    current_translations.append({
+                        "video_name": translations.get('video_name', 'Unknown'),
+                        "language": translations.get('language', 'Unknown'),
+                        "translation": translations.get('translation', 'Unknown'),
+                        "srt_link": translations.get('srt_link', 'Unknown')
+                    })
+                else:
+                    st.error("Beklenmedik yanıt formatı.")
+#            else:
+#                st.error(f"Error occurred: {response.text}")
 
-# Display translations directly after processing
-if current_translations:
-    st.markdown("<div class='results'>", unsafe_allow_html=True)
-    for translation in current_translations:
-        st.write(f"**Video Name:** {translation['video_name']}")
-        st.write(f"**Language:** {translation['language']}")
-        st.write(f"**Translation:** {translation['translation']}")
-        st.write(f"**SRT Link:** {translation['srt_link']}")
-        st.write("---")  # Separator line
-    st.markdown("</div>", unsafe_allow_html=True)
-else:
-    st.info("No current translations available.")
+# API response to check
+response = requests.get("http://127.0.0.1:8000/translations")
+st.write(response.json())  # API yanıtını yazdır
+
