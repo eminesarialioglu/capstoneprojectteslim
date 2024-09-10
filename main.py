@@ -115,17 +115,24 @@ async def process_video(
                         {"role": "user", "content": transcript}
                     ]
                 )
+                
+                # Yanıtı kontrol et
+                print(response)  # Yanıtı konsola yazdır
                 translation_text = response.choices[0].message.content
 
-                srt_content = create_srt(translation_text, video_duration)
-                srt_filename = f"{os.path.splitext(video.filename)[0]}_{lang}.srt"
-                srt_path = os.path.join(link_yol, srt_filename)  # Tam yolu oluştur
-                with open(srt_path, "w", encoding="utf-8") as srt_file:
-                    srt_file.write(srt_content)
+                # Burada translation_text'in bir string olduğunu varsayıyoruz
+                if isinstance(translation_text, str):
+                    srt_content = create_srt(translation_text, video_duration)
+                    srt_filename = f"{os.path.splitext(video.filename)[0]}_{lang}.srt"
+                    srt_path = os.path.join(link_yol, srt_filename)  # Tam yolu oluştur
+                    with open(srt_path, "w", encoding="utf-8") as srt_file:
+                        srt_file.write(srt_content)
 
-                cursor.execute('''INSERT INTO translations (video_name, language, translation, srt_link)
-                                  VALUES (?, ?, ?, ?)''', (video.filename, lang, translation_text, srt_path))
-                db.commit()
+                    cursor.execute('''INSERT INTO translations (video_name, language, translation, srt_link)
+                                      VALUES (?, ?, ?, ?)''', (video.filename, lang, translation_text, srt_path))
+                    db.commit()
+                else:
+                    raise HTTPException(status_code=500, detail="Çeviri beklenmedik bir formatta döndü.")
 
             except Exception as e:
                 db.rollback()
